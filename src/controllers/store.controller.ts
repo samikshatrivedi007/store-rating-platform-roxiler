@@ -1,76 +1,102 @@
 import { Request, Response } from "express";
-import { Store } from "../models/store.model";
-import { AppDataSource } from "../data-source";
+import prisma from "../prisma";
 import { AuthRequest } from "../middlewares/auth.middleware";
+import {Rating, Store} from "../generated/prisma";
+
+type RatingWithUser = Rating & {
+    user: {
+        id: number;
+        name: string;
+        email: string;
+    };
+};
+
 
 export const listStores = async (req: Request, res: Response) => {
-    const { q, sortBy = "name", order = "ASC" } = req.query as any;
-    const storeRepo = AppDataSource.getRepository(Store);
-    const qb = storeRepo.createQueryBuilder("store").leftJoinAndSelect("store.ratings", "rating");
+    const { q, sortBy = "name", order = "asc" } = req.query as any;
 
-    if (q) qb.andWhere("(store.name LIKE :q OR store.address LIKE :q)", { q: `%${q}%` });
+    const where: any = {};
+    if (q) where.OR = [
+        { name: { contains: q, mode: "insensitive" } },
+        { address: { contains: q, mode: "insensitive" } }
+    ];
 
-    qb.orderBy(`store.${sortBy}`, (order as "ASC" | "DESC") || "ASC");
+    const stores = await prisma.store.findMany({
+        where,
+        include: { ratings: true },
+        orderBy: { [sortBy]: order.toLowerCase() === "asc" ? "asc" : "desc" }
+    });
 
-    const stores = await qb.getMany();
-
-    // compute overall rating and also user's submitted rating (client will pass user id via auth)
-    const result = stores.map(s => {
-        const ratings = s.ratings || [];
-        const overall = ratings.length ? Math.round((ratings.reduce((a, r) => a + r.value, 0) / ratings.length) * 10) / 10 : null;
+    const result = await Promise.all(stores.map(async (s: Store)  => {
+        const avg = await prisma.rating.aggregate({
+            where: { storeId: s.id },
+            _avg: { value: true },
+            _count: { value: true }
+        });
         return {
             id: s.id,
             name: s.name,
             email: s.email,
             address: s.address,
-            overallRating: overall
+            overallRating: avg._avg.value ? Number(avg._avg.value.toFixed(1)) : null,
+            ratingsCount: avg._count.value
         };
-    });
+    }));
+
     res.json(result);
 };
 
 export const createStore = async (req: Request, res: Response) => {
-    const { name, email, address } = req.body;
-    if (!name || !email) return res.status(400).json({ message: "name and email required" });
-    const storeRepo = AppDataSource.getRepository(Store);
-    const exist = await storeRepo.findOne({ where: { email } });
-    if (exist) return res.status(400).json({ message: "Store with this email exists" });
-
-    const store = storeRepo.create({ name, email, address });
-    await storeRepo.save(store);
+    const { name, email, address, ownerId } = req.body;
+    if (!name) return res.status(400).json({ message: "name required" });
+    const store = await prisma.store.create({ data: { name, email, address, ownerId }});
     res.status(201).json(store);
 };
 
 export const getStoreById = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
-    const storeRepo = AppDataSource.getRepository(Store);
-    const store = await storeRepo.findOne({  where : {id},  relations: ["ratings", "ratings.user"] });
+    const store = await prisma.store.findUnique({ where: { id }, include: { ratings: { include: { user: { select: { id: true, name: true, email: true }}}}}});
     if (!store) return res.status(404).json({ message: "Store not found" });
 
-    const overall = store.ratings.length ? Math.round((store.ratings.reduce((a, r) => a + r.value, 0) / store.ratings.length) * 10) / 10 : null;
-    res.json({
+    const avg = await prisma.rating.aggregate({ where: { storeId: id }, _avg: { value: true }, _count: { value: true }});
+    return res.json({
         id: store.id,
         name: store.name,
         email: store.email,
         address: store.address,
-        overallRating: overall,
-        ratingsCount: store.ratings.length
+        overallRating: avg._avg.value ? Number(avg._avg.value.toFixed(1)) : null,
+        ratingsCount: avg._count.value
     });
 };
 
 export const getStoreRatingsForOwner = async (req: AuthRequest, res: Response) => {
     const storeId = Number(req.params.id);
-    const storeRepo = AppDataSource.getRepository(Store);
-    const store = await storeRepo.findOne({ where: { id: storeId },  relations: ["ratings", "ratings.user"] });
+    const store = await prisma.store.findUnique({ where: { id: storeId }, include: { ratings: { include: { user: { select: { id: true, name: true, email: true }}}}}});
     if (!store) return res.status(404).json({ message: "Store not found" });
 
-    // In a real app, check that req.user is owner of store; for now allow STORE_OWNER role or ADMIN
-    const ratings = store.ratings.map(r => ({
+    // Optionally check owner:
+    if (store.ownerId && store.ownerId !== req.user!.id && req.user!.role !== "ADMIN") {
+        return res.status(403).json({ message: "Forbidden" });
+    }
+
+
+    const ratings = store.ratings.map((r: RatingWithUser) => ({
         id: r.id,
         value: r.value,
-        user: { id: r.user.id, name: r.user.name, email: r.user.email },
-        createdAt: r.createdAt
-    }));
-    const avg = ratings.length ? Math.round((ratings.reduce((a, r) => a + r.value, 0) / ratings.length) * 10) / 10 : null;
-    res.json({ ratings, averageRating: avg });
-};
+        user: {
+            id: r.user.id,
+            name: r.user.name,
+            email: r.user.email,
+        },
+        createdAt: r.createdAt,
+    }))as RatingWithUser[];
+
+    const avg = ratings.length
+        ? ratings.reduce((sum: number, r: RatingWithUser) => sum + r.value, 0) / ratings.length
+        : null;
+
+    res.json({
+        ratings,
+        averageRating: avg !== null ? Number(avg.toFixed(1)) : null
+    });
+}

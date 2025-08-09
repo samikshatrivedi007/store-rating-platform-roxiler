@@ -1,64 +1,89 @@
+// src/controllers/user.controller.ts
 import { Request, Response } from "express";
-import { User } from "../models/user.model";
+import prisma from "../prisma";
+
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { hashPassword, comparePasswords } from "../utils/hash";
-import { nameValid, passwordValid } from "../utils/validators";
-import {AppDataSource} from "../data-source";
+import { passwordValid } from "../utils/validators";
+import {User} from "../generated/prisma";
 
 export const getProfile = async (req: AuthRequest, res: Response) => {
-    const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOne({where: { id: req.user!.id } });
+    const user = await prisma.user.findUnique({ where: { id: req.user!.id }, select: { id: true, name: true, email: true, address: true, role: true }});
     if (!user) return res.status(404).json({ message: "Not found" });
-    res.json({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        address: user.address,
-        role: user.role
-    });
+    res.json(user);
 };
 
+// Update password function
 export const updatePassword = async (req: AuthRequest, res: Response) => {
-    const { currentPassword, newPassword } = req.body;
-    if (!currentPassword || !newPassword) return res.status(400).json({ message: "currentPassword and newPassword required" });
-    if (!passwordValid(newPassword)) return res.status(400).json({ message: "Password must be 8-16 chars, include uppercase and special char." });
+    try {
+        const { currentPassword, newPassword } = req.body;
 
-    const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOne({where: { id: req.user!.id } });
-    if (!user) return res.status(404).json({ message: "Not found" });
+        // 1. Check input
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ message: "Both currentPassword and newPassword are required." });
+        }
 
-    const ok = await comparePasswords(currentPassword, user.password);
-    if (!ok) return res.status(400).json({ message: "Current password incorrect" });
+        // 2. Validate new password format
+        if (!passwordValid(newPassword)) {
+            return res.status(400).json({
+                message: "Password must be 8-16 chars, include uppercase and special character."
+            });
+        }
 
-    user.password = await hashPassword(newPassword);
-    await userRepo.save(user);
-    return res.json({ message: "Password updated" });
+        // 3. Get logged-in user from token
+        const user = await prisma.user.findUnique({
+            where: { id: req.user?.id }
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        // 4. Compare current password with DB hash
+        const isMatch = await comparePasswords(currentPassword, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ message: "Current password is incorrect." });
+        }
+
+        // 5. Hash and update new password
+        const hashedPassword = await hashPassword(newPassword);
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { password: hashedPassword }
+        });
+
+        // 6. Success
+        return res.json({ message: "Password updated successfully." });
+
+    } catch (error) {
+        console.error("Error updating password:", error);
+        return res.status(500).json({ message: "Internal server error." });
+    }
 };
 
-//Admin endpoints
 
 export const listUsers = async (req: Request, res: Response) => {
-    const { sortBy = "name", order = "ASC", role, q } = req.query as any;
-    const userRepo = AppDataSource.getRepository(User);
+    const { sortBy = "name", order = "asc", role, q } = req.query as any;
+    const where: any = {};
 
-    const qb = userRepo.createQueryBuilder("user");
+    if (role) where.role = role;
+    if (q) where.OR = [
+        { name: { contains: q, mode: "insensitive" } },
+        { email: { contains: q, mode: "insensitive" } },
+        { address: { contains: q, mode: "insensitive" } }
+    ];
 
-    if (role) qb.andWhere("user.role = :role", { role });
-    if (q) {
-        qb.andWhere("(user.name LIKE :q OR user.email LIKE :q OR user.address LIKE :q)", { q: `%${q}%` });
-    }
+    const users = await prisma.user.findMany({
+        where,
+        orderBy: { [sortBy]: order.toLowerCase() === "asc" ? "asc" : "desc" }
+    });
 
-    qb.orderBy(`user.${sortBy}`, (order as "ASC" | "DESC") || "ASC");
-
-    const users = await qb.getMany();
-    const mapped = users.map(u => ({ id: u.id, name: u.name, email: u.email, address: u.address, role: u.role }));
-    res.json(mapped);
+    res.json(users.map((u: User) => ({ id: u.id, name: u.name, email: u.email, address: u.address, role: u.role })));
 };
 
 export const getUserById = async (req: Request, res: Response) => {
     const id = Number(req.params.id);
-    const userRepo = AppDataSource.getRepository(User);
-    const user = await userRepo.findOne({ where: { id },  relations: ["ratings"] });
+    const user = await prisma.user.findUnique({ where: { id }, include: { ratings: true }});
     if (!user) return res.status(404).json({ message: "User not found" });
     res.json({
         id: user.id,
