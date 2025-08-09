@@ -1,17 +1,26 @@
-import express from 'express';
-import dotenv from 'dotenv';
+import express from "express";
+import dotenv from "dotenv";
+import { PrismaClient } from "@prisma/client";
+import app from "./app";
 
 dotenv.config();
 
-const app = express();
+const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 
-app.use(express.json());
+// Test DB connection before starting server
+async function startServer() {
+    try {
+        await prisma.$connect();
+        console.log("✅ Database connected successfully");
 
-app.get('/', (_req, res) => {
-    res.send('Roxiler backend running !!!');
-});
+        app.listen(PORT, () => {
+            console.log(`🚀 Server running on port ${PORT}`);
+        });
+    } catch (error) {
+        console.error("❌ Failed to connect to database:", error);
+        process.exit(1);
+    }
+}
 
-app.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-});
+startServer();
