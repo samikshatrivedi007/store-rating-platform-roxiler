@@ -1,19 +1,15 @@
-export const nameValid = (name: string) => {
-    return typeof name === "string" && name.trim().length >= 20 && name.trim().length <= 60;
-};
+export function nameValid(name: string): boolean {
+    return typeof name === "string" && name.trim().length >= 2;
+}
 
-export const addressValid = (address?: string) => {
-    if (!address) return true;
-    return typeof address === "string" && address.length <= 400;
-};
+export function passwordValid(password: string): boolean {
+    return typeof password === "string" && password.length >= 6;
+}
 
-export const passwordValid = (password: string) => {
-    // 8-16 chars, at least one uppercase and one special character
-    const re = /^(?=.*[A-Z])(?=.*[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]).{8,16}$/;
-    return re.test(password);
-};
+export function emailValid(email: string): boolean {
+    return /\S+@\S+\.\S+/.test(email);
+}
 
-export const emailValid = (email: string) => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-};
+export function addressValid(address: string): boolean {
+    return typeof address === "string" && address.trim().length > 5;
+}
