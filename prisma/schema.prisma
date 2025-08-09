@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+
 }
 
 datasource db {
@@ -12,6 +12,7 @@ enum Role {
   USER
   STORE_OWNER
 }
+
 model User{
   id        Int      @id @default(autoincrement())
   name      String
