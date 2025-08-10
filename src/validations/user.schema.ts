@@ -1,6 +1,7 @@
 import { z } from "zod";
 
-export const createUserSchema = z.object({
+export const
+    loginBodySchema = z.object({
     name: z.string()
         .min(20, "Name must contain at least 20 characters")
         .max(60,"Name must be not no more than 60 characters"),
@@ -14,4 +15,5 @@ export const createUserSchema = z.object({
 
 });
 
-export const updateUserSchema = createUserSchema.partial();
+export const updateUserSchema =
+    loginBodySchema.partial();
