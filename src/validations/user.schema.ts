@@ -13,8 +13,44 @@ export const registerSchema = z.object({
 });
 
 export const loginSchema = z.object({
-    email: z.string().email("Invalid email address"),
+    email: z.email("Invalid email address"),
     password: z.string()
         .min(8, "Password must be at least 8 characters")
         .max(16, "Password must be not more than 16 characters"),
 });
+
+export const updatePasswordSchema = z.object({
+    currentPassword: z.string()
+        .min(1, "Current password is required.")
+        .max(16, "Password must be less than 16 characters"),
+    newPassword: z.string()
+        .min(8, "Password must be at least 8 characters.")
+        .max(16, "Password must be at most 16 characters.")
+        .regex(/[A-Z]/, "Password must contain at least one uppercase letter.")
+        .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character.")
+});
+
+export const listUsersQuerySchema = z.object({
+    sortBy: z.string()
+        .optional()
+        .refine(val => !val || ["name", "email", "address", "role"].includes(val), {
+            message: "Invalid sortBy field."
+        }),
+    order: z.string()
+        .optional()
+        .refine(val => !val || ["asc", "desc", "ASC", "DESC"].includes(val), {
+            message: "Invalid order value."
+        }),
+    role: z.string()
+        .optional()
+        .refine(val => !val || ["ADMIN", "STORE_OWNER", "CUSTOMER"].includes(val), {
+            message: "Invalid role."
+        }),
+    q: z.string().optional()
+});
+
+export const getUserByIdParamsSchema = z.object({
+    id: z.string()
+        .regex(/^\d+$/, "ID must be a number.")
+});
+

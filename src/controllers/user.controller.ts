@@ -5,6 +5,7 @@ import { AuthRequest } from "../middlewares/auth.middleware";
 import { hashPassword, comparePasswords } from "../utils/hash";
 import { passwordValid } from "../utils/validators";
 import { User } from "../generated/prisma";
+import {getUserByIdParamsSchema, listUsersQuerySchema, updatePasswordSchema} from "../validations/user.schema";
 
 export const getProfile = async (req: AuthRequest, res: Response) => {
     try {
@@ -22,6 +23,13 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
 
 // Update password function
 export const updatePassword = async (req: AuthRequest, res: Response) => {
+    const parseResult = updatePasswordSchema.safeParse(req.body);
+    if (!parseResult.success) {
+        return res.status(400).json({
+            errors: parseResult.error.issues
+        });
+    }
+    const { currentPassword, newPassword } = parseResult.data;
     try {
         const { currentPassword, newPassword } = req.body;
 
@@ -63,6 +71,12 @@ export const updatePassword = async (req: AuthRequest, res: Response) => {
 };
 
 export const listUsers = async (req: Request, res: Response) => {
+    const parseResult = listUsersQuerySchema.safeParse(req.query);
+    if (!parseResult.success) {
+        return res.status(400).json({ errors: parseResult.error.issues });
+    }
+
+    const { sortBy, order, role, q } = parseResult.data;
     try {
         const { sortBy = "name", order = "asc", role, q } = req.query as any;
         const where: any = {};
@@ -95,6 +109,12 @@ export const listUsers = async (req: Request, res: Response) => {
 };
 
 export const getUserById = async (req: Request, res: Response) => {
+    const parseResult = getUserByIdParamsSchema.safeParse(req.params);
+    if (!parseResult.success) {
+        return res.status(400).json({ errors: parseResult.error.issues });
+    }
+
+    const id = Number(parseResult.data.id);
     try {
         const id = Number(req.params.id);
         const user = await prisma.user.findUnique({
