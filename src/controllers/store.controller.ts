@@ -75,7 +75,7 @@ export const createStore = async (req: Request, res: Response,next:NextFunction)
         });
     }
     try {
-        const { name, email, address, ownerId } = req.body;
+        const { name, email, address, ownerId } = result.data;
         if (!name) return res.status(400).json({ message: "name required" });
         const store = await prisma.store.create({ data: { name, email, address, ownerId } });
         res.status(201).json(store);
