@@ -1,5 +1,6 @@
 import {NextFunction, Request, Response} from "express";
 import prisma from "../prisma";
+import { Role } from "@prisma/client";
 
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { hashPassword, comparePasswords } from "../utils/hash";
@@ -72,28 +73,26 @@ export const updatePassword = async (req: AuthRequest, res: Response,next:NextFu
 
 };
 
-export const listUsers = async (req: Request, res: Response,next:NextFunction) => {
+export const listUsers = async (req: Request, res: Response, next: NextFunction) => {
     const parseResult = listUsersQuerySchema.safeParse(req.query);
     if (!parseResult.success) {
         return res.status(400).json({ errors: parseResult.error.issues });
     }
 
-    const { sortBy, order, role, q } = parseResult.data;
+    const { sortBy = "name", order = "asc", role, q } = parseResult.data;
+
     try {
-        const { sortBy = "name", order = "asc", role, q } = req.query as any;
-        const where: any = {};
-
-        if (role) where.role = role;
-        if (q) {
-            where.OR = [
-                { name: { contains: q, mode: "insensitive" } },
-                { email: { contains: q, mode: "insensitive" } },
-                { address: { contains: q, mode: "insensitive" } }
-            ];
-        }
-
         const users = await prisma.user.findMany({
-            where,
+            where: {
+                ...(role ? { role: role as Role } : {}),
+                ...(q ? {
+                    OR: [
+                        { name: { contains: q, mode: "insensitive" } },
+                        { email: { contains: q, mode: "insensitive" } },
+                        { address: { contains: q, mode: "insensitive" } }
+                    ]
+                } : {})
+            },
             orderBy: { [sortBy]: order.toLowerCase() === "asc" ? "asc" : "desc" }
         });
 
@@ -104,12 +103,12 @@ export const listUsers = async (req: Request, res: Response,next:NextFunction) =
             address: u.address,
             role: u.role
         })));
-    }  catch (error) {
+    } catch (error) {
         console.error(error);
         next(error);
     }
-
 };
+
 
 export const getUserById = async (req: Request, res: Response ,next:NextFunction) => {
     const parseResult = getUserByIdParamsSchema.safeParse(req.params);

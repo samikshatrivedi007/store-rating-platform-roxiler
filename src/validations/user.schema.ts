@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { Role } from "@prisma/client"; // Prisma-generated enum
 
 export const registerSchema = z.object({
     name: z.string()
         .min(20, "Name must contain at least 20 characters")
         .max(60, "Name must be not more than 60 characters"),
-    email: z.string().email("Invalid email address"),
+    email: z.email("Invalid email address"),
     address: z.string().max(400, "Address must be not more than 400 characters").optional(),
     role: z.enum(["ADMIN", "STORE_OWNER", "CUSTOMER"]),
     password: z.string()
@@ -31,21 +32,9 @@ export const updatePasswordSchema = z.object({
 });
 
 export const listUsersQuerySchema = z.object({
-    sortBy: z.string()
-        .optional()
-        .refine(val => !val || ["name", "email", "address", "role"].includes(val), {
-            message: "Invalid sortBy field."
-        }),
-    order: z.string()
-        .optional()
-        .refine(val => !val || ["asc", "desc", "ASC", "DESC"].includes(val), {
-            message: "Invalid order value."
-        }),
-    role: z.string()
-        .optional()
-        .refine(val => !val || ["ADMIN", "STORE_OWNER", "CUSTOMER"].includes(val), {
-            message: "Invalid role."
-        }),
+    sortBy: z.enum(["name", "email", "address", "role"]).optional(),
+    order: z.enum(["asc", "desc", "ASC", "DESC"]).optional(),
+    role: z.enum(Role).optional(),
     q: z.string().optional()
 });
 
