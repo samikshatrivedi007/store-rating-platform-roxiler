@@ -11,7 +11,7 @@ export const
     role: z.enum(["ADMIN", "STORE_OWNER", "CUSTOMER"]),
     password: z.string()
         .min(8, "Password must be at least 8 characters")
-        .max(16,"Password must be not more than 12 characters"),
+        .max(16,"Password must be not more than 16 characters"),
 
 });
 
