@@ -3,10 +3,21 @@ import prisma from "../prisma";
 import { hashPassword, comparePasswords } from "../utils/hash";
 import jwt from "jsonwebtoken";
 import { nameValid, passwordValid, emailValid, addressValid } from "../utils/validators";
+import { registerSchema,loginSchema} from "../validations/user.schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || "secretkey";
 
 export const register = async (req: Request, res: Response) => {
+
+    const result = registerSchema.safeParse(req.body);
+
+    if (!result.success) {
+        // Zod error format
+        return res.status(400).json({
+            message: "Validation error",
+            errors: result.error.issues
+        });
+    }
     try {
         const { name, email, address, password, role } = req.body;
         if (!nameValid(name)) return res.status(400).json({ message: "Name must be 20-60 characters." });
@@ -44,6 +55,17 @@ export const register = async (req: Request, res: Response) => {
 };
 
 export const login = async (req: Request, res: Response) => {
+
+    const result = loginSchema.safeParse(req.body);
+
+    if (!result.success) {
+        // Zod error format
+        return res.status(400).json({
+            message: "Validation error",
+            errors: result.error.issues
+        });
+    }
+
     try {
         const { email, password } = req.body;
         if (!email || !password) return res.status(400).json({ message: "Email and password required." });
