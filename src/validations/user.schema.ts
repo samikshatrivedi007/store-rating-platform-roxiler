@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { Role } from "@prisma/client"; // Prisma-generated enum
+import { Role } from "../prisma/client"; // Prisma-generated enum
 
 export const registerSchema = z.object({
     name: z.string()
