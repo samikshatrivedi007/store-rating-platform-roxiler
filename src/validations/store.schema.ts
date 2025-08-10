@@ -7,7 +7,6 @@ export const storeSchema = z.object({
         .max(60, "Store name must be less than 100 characters"),
 
     email: z
-        .string()
         .email("Invalid email address")
         .optional()
         .or(z.literal("").transform(() => undefined)), // allows empty string as "no email"
