@@ -1,4 +1,3 @@
-// src/controllers/rating.controller.ts
 import { Request, Response } from "express";
 import prisma from "../prisma";
 import { AuthRequest } from "../middlewares/auth.middleware";
