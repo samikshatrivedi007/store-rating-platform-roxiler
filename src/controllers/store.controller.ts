@@ -135,16 +135,32 @@ export const getStoreRatingsForOwner = async (req: AuthRequest, res: Response,ne
         const storeId = Number(req.params.id);
         const store = await prisma.store.findUnique({
             where: { id: storeId },
-            include: { ratings: { include: { user: { select: { id: true, name: true, email: true } } } } }
+           select: { id:true,
+           ratings:{ select:{
+               id:true,
+                   value:true,
+                              user:{
+                                       select:{
+                                                 id:true,
+                                                 name:true,
+                                                 email:true,
+
+                                             }
+                                       },createdAt:true
+                              }
+                   }
+
+              ,ownerId:true}
         });
         if (!store) return res.status(404).json({ message: "Store not found" });
 
         // Optionally check owner:
         if (store.ownerId && store.ownerId !== req.user!.id && req.user!.role !== "ADMIN") {
+
             return res.status(403).json({ message: "Forbidden" });
         }
 
-        const ratings = store.ratings.map((r: RatingWithUser) => ({
+        const ratings = store.ratings.map((r) => ({
             id: r.id,
             value: r.value,
             user: {
@@ -156,7 +172,7 @@ export const getStoreRatingsForOwner = async (req: AuthRequest, res: Response,ne
         })) as RatingWithUser[];
 
         const avg = ratings.length
-            ? ratings.reduce((sum: number, r: RatingWithUser) => sum + r.value, 0) / ratings.length
+            ? ratings.reduce((sum: number, r: RatingWithUser ) => sum + r.value, 0) / ratings.length
             : null;
 
         res.json({

@@ -1,6 +1,6 @@
 import {NextFunction, Request, Response} from "express";
 import prisma from "../prisma";
-import { Role } from "@prisma/client";
+import { Role } from "../prisma/client";
 
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { hashPassword, comparePasswords } from "../utils/hash";
