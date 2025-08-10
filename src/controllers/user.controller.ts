@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import {NextFunction, Request, Response} from "express";
 import prisma from "../prisma";
 
 import { AuthRequest } from "../middlewares/auth.middleware";
@@ -7,7 +7,7 @@ import { passwordValid } from "../utils/validators";
 import { User } from "../generated/prisma";
 import {getUserByIdParamsSchema, listUsersQuerySchema, updatePasswordSchema} from "../validations/user.schema";
 
-export const getProfile = async (req: AuthRequest, res: Response) => {
+export const getProfile = async (req: AuthRequest, res: Response,next:NextFunction) => {
     try {
         const user = await prisma.user.findUnique({
             where: { id: req.user!.id },
@@ -15,14 +15,15 @@ export const getProfile = async (req: AuthRequest, res: Response) => {
         });
         if (!user) return res.status(404).json({ message: "Not found" });
         res.json(user);
-    } catch (error: any) {
-        console.error("Get Profile Error:", error);
-        res.status(500).json({ message: "Internal server error.", error: error.message || error });
+    }  catch (error) {
+        console.error(error);
+        next(error);
     }
+
 };
 
 // Update password function
-export const updatePassword = async (req: AuthRequest, res: Response) => {
+export const updatePassword = async (req: AuthRequest, res: Response,next:NextFunction) => {
     const parseResult = updatePasswordSchema.safeParse(req.body);
     if (!parseResult.success) {
         return res.status(400).json({
@@ -64,13 +65,14 @@ export const updatePassword = async (req: AuthRequest, res: Response) => {
 
         return res.json({ message: "Password updated successfully." });
 
-    } catch (error: any) {
-        console.error("Error updating password:", error);
-        return res.status(500).json({ message: "Internal server error.", error: error.message || error });
+    }  catch (error) {
+        console.error(error);
+        next(error);
     }
+
 };
 
-export const listUsers = async (req: Request, res: Response) => {
+export const listUsers = async (req: Request, res: Response,next:NextFunction) => {
     const parseResult = listUsersQuerySchema.safeParse(req.query);
     if (!parseResult.success) {
         return res.status(400).json({ errors: parseResult.error.issues });
@@ -102,13 +104,14 @@ export const listUsers = async (req: Request, res: Response) => {
             address: u.address,
             role: u.role
         })));
-    } catch (error: any) {
-        console.error("List Users Error:", error);
-        res.status(500).json({ message: "Internal server error.", error: error.message || error });
+    }  catch (error) {
+        console.error(error);
+        next(error);
     }
+
 };
 
-export const getUserById = async (req: Request, res: Response) => {
+export const getUserById = async (req: Request, res: Response ,next:NextFunction) => {
     const parseResult = getUserByIdParamsSchema.safeParse(req.params);
     if (!parseResult.success) {
         return res.status(400).json({ errors: parseResult.error.issues });
@@ -130,8 +133,9 @@ export const getUserById = async (req: Request, res: Response) => {
             role: user.role,
             ratings: user.role === "STORE_OWNER" ? user.ratings : undefined
         });
-    } catch (error: any) {
-        console.error("Get User By ID Error:", error);
-        res.status(500).json({ message: "Internal server error.", error: error.message || error });
+    }  catch (error) {
+        console.error(error);
+        next(error);
     }
+
 };

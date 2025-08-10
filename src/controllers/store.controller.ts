@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import {NextFunction, Request, Response} from "express";
 import prisma from "../prisma";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { Rating, Store } from "../generated/prisma";
@@ -17,7 +17,7 @@ type RatingWithUser = Rating & {
     };
 };
 
-export const listStores = async (req: Request, res: Response) => {
+export const listStores = async (req: Request, res: Response,next: NextFunction) => {
     const queryResult = listStoresQuerySchema.safeParse(req.query);
     if (!queryResult.success) {
         return res.status(400).json({ errors: queryResult.error.issues });
@@ -57,13 +57,15 @@ export const listStores = async (req: Request, res: Response) => {
         }));
 
         res.json(result);
-    } catch (error: any) {
-        console.error("List Stores Error:", error);
-        res.status(500).json({ message: "Internal server error.", error: error.message || error });
     }
+    catch (error) {
+        console.error(error);
+        next(error);
+    }
+
 };
 
-export const createStore = async (req: Request, res: Response) => {
+export const createStore = async (req: Request, res: Response,next:NextFunction) => {
     const result = createStoreSchema.safeParse(req.body);
 
     if (!result.success) {
@@ -77,13 +79,14 @@ export const createStore = async (req: Request, res: Response) => {
         if (!name) return res.status(400).json({ message: "name required" });
         const store = await prisma.store.create({ data: { name, email, address, ownerId } });
         res.status(201).json(store);
-    } catch (error: any) {
-        console.error("Create Store Error:", error);
-        res.status(500).json({ message: "Internal server error.", error: error.message || error });
+    }  catch (error) {
+        console.error(error);
+        next(error);
     }
+
 };
 
-export const getStoreById = async (req: Request, res: Response) => {
+export const getStoreById = async (req: Request, res: Response,next:NextFunction) => {
     const paramCheck = getStoreByIdSchema.safeParse(req.params);
     if (!paramCheck.success) {
         return res.status(400).json({
@@ -113,13 +116,14 @@ export const getStoreById = async (req: Request, res: Response) => {
             overallRating: avg._avg.value ? Number(avg._avg.value.toFixed(1)) : null,
             ratingsCount: avg._count.value
         });
-    } catch (error: any) {
-        console.error("Get Store By ID Error:", error);
-        res.status(500).json({ message: "Internal server error.", error: error.message || error });
+    }  catch (error) {
+        console.error(error);
+        next(error);
     }
+
 };
 
-export const getStoreRatingsForOwner = async (req: AuthRequest, res: Response) => {
+export const getStoreRatingsForOwner = async (req: AuthRequest, res: Response,next:NextFunction) => {
     const paramCheck = getStoreRatingsForOwnerSchema.safeParse(req.params);
     if (!paramCheck.success) {
         return res.status(400).json({
@@ -159,8 +163,9 @@ export const getStoreRatingsForOwner = async (req: AuthRequest, res: Response) =
             ratings,
             averageRating: avg !== null ? Number(avg.toFixed(1)) : null
         });
-    } catch (error: any) {
-        console.error("Get Store Ratings For Owner Error:", error);
-        res.status(500).json({ message: "Internal server error.", error: error.message || error });
+    } catch (error) {
+        console.error(error);
+        next(error);
     }
+
 };

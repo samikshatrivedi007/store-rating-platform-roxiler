@@ -1,9 +1,9 @@
-import { Request, Response } from "express";
+import {NextFunction, Request, Response} from "express";
 import prisma from "../prisma";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import {createOrUpdateRatingSchema, getMyRatingForStoreSchema} from "../validations/rating.schema";
 
-export const createOrUpdateRating = async (req: AuthRequest, res: Response) => {
+export const createOrUpdateRating = async (req: AuthRequest, res: Response,next:NextFunction) => {
     const validation = createOrUpdateRatingSchema.safeParse(req.body);
     if (!validation.success) {
         return res.status(400).json({
@@ -30,13 +30,14 @@ export const createOrUpdateRating = async (req: AuthRequest, res: Response) => {
             const created = await prisma.rating.create({ data: { value, storeId, userId } });
             return res.status(201).json({ message: "Rating created", rating: created });
         }
-    } catch (error: any) {
-        console.error("Create/Update Rating Error:", error);
-        res.status(500).json({ message: "Internal server error.", error: error.message || error });
+    } catch (error) {
+        console.error(error);
+        next(error);
     }
+
 };
 
-export const getMyRatingForStore = async (req: AuthRequest, res: Response) => {
+export const getMyRatingForStore = async (req: AuthRequest, res: Response,next:NextFunction) => {
     const validation = getMyRatingForStoreSchema.safeParse(req.params);
     if (!validation.success) {
         return res.status(400).json({
@@ -49,8 +50,8 @@ export const getMyRatingForStore = async (req: AuthRequest, res: Response) => {
         const userId = req.user!.id;
         const rating = await prisma.rating.findFirst({ where: { storeId, userId } });
         res.json({ rating });
-    } catch (error: any) {
-        console.error("Get My Rating Error:", error);
-        res.status(500).json({ message: "Internal server error.", error: error.message || error });
+    } catch (error) {
+        console.error(error);
+        next(error);
     }
 };

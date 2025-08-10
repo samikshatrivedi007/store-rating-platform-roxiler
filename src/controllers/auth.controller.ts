@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import {NextFunction, Request, Response} from "express";
 import prisma from "../prisma";
 import { hashPassword, comparePasswords } from "../utils/hash";
 import jwt from "jsonwebtoken";
@@ -7,7 +7,7 @@ import { registerSchema,loginSchema} from "../validations/user.schema";
 
 const JWT_SECRET = process.env.JWT_SECRET || "secretkey";
 
-export const register = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response,next:NextFunction) => {
 
     const result = registerSchema.safeParse(req.body);
 
@@ -48,13 +48,14 @@ export const register = async (req: Request, res: Response) => {
         });
 
         return res.status(201).json({ message: "User created", user: createdUser });
-    } catch (error: any) {
-        console.error("Register Error:", error);
-        return res.status(500).json({ message: "Internal server error.", error: error.message || error });
+    } catch (error) {
+        console.error(error);
+        next(error);
     }
+
 };
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response,next:NextFunction) => {
 
     const result = loginSchema.safeParse(req.body);
 
@@ -78,8 +79,9 @@ export const login = async (req: Request, res: Response) => {
 
         const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: "7d" });
         return res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
-    } catch (error: any) {
-        console.error("Login Error:", error);
-        return res.status(500).json({ message: "Internal server error.", error: error.message || error });
+    } catch (error) {
+        console.error(error);
+        next(error);
     }
+
 };
