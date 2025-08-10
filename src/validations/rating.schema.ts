@@ -1,19 +1,16 @@
 import { z } from "zod";
 
-export const ratingSchema = z.object({
-    value: z
-        .number()
-        .int("Rating must be an integer")
-        .min(1, "Rating must be at least 1")
-        .max(5, "Rating must be at most 5"),
+export const createOrUpdateRatingSchema = z.object({
+    storeId: z.number()
+        .int("storeId must be an integer")
+        .positive("storeId must be a positive integer"),
+    value: z.number()
+        .int("Value must be an integer")
+        .min(1, "Value must be between 1 and 5")
+        .max(5, "Value must be between 1 and 5")
+});
 
-    userId: z
-        .number()
-        .int("User ID must be an integer")
-        .positive("User ID must be positive"),
-
-    storeId: z
-        .number()
-        .min(1, "Store ID must be an integer")
-        .positive("Store ID must be positive"),
+export const getMyRatingForStoreSchema = z.object({
+    storeId: z.string()
+        .regex(/^\d+$/, "storeId must be a number")
 });

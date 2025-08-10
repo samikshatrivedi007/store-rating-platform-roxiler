@@ -2,8 +2,16 @@
 import { Request, Response } from "express";
 import prisma from "../prisma";
 import { AuthRequest } from "../middlewares/auth.middleware";
+import {createOrUpdateRatingSchema, getMyRatingForStoreSchema} from "../validations/rating.schema";
 
 export const createOrUpdateRating = async (req: AuthRequest, res: Response) => {
+    const validation = createOrUpdateRatingSchema.safeParse(req.body);
+    if (!validation.success) {
+        return res.status(400).json({
+            message: "Validation error",
+            errors: validation.error.issues
+        });
+    }
     try {
         const { storeId, value } = req.body;
         const userId = req.user!.id;
@@ -30,6 +38,13 @@ export const createOrUpdateRating = async (req: AuthRequest, res: Response) => {
 };
 
 export const getMyRatingForStore = async (req: AuthRequest, res: Response) => {
+    const validation = getMyRatingForStoreSchema.safeParse(req.params);
+    if (!validation.success) {
+        return res.status(400).json({
+            message: "Validation error",
+            errors: validation.error.issues
+        });
+    }
     try {
         const storeId = Number(req.params.storeId);
         const userId = req.user!.id;
