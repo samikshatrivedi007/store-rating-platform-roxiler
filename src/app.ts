@@ -1,11 +1,13 @@
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
+
 import authRoutes from "./routes/auth.routes";
 import userRoutes from "./routes/user.routes";
 import storeRoutes from "./routes/store.routes";
 import ratingRoutes from "./routes/rating.routes";
 import adminRoutes from "./routes/admin.routes";
+import { errorHandler } from "./middlewares/errorHandler";
 
 const app = express();
 
@@ -25,5 +27,8 @@ app.use("/api/admin", adminRoutes);
 app.get("/", (_req, res) => {
     res.send("🚀 API is running...");
 });
+
+// Error handler in  LAST middleware
+app.use(errorHandler);
 
 export default app;

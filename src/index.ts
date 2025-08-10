@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import app from "./app";
+import {errorHandler} from "./middlewares/errorHandler";
 
 dotenv.config();
 
@@ -22,5 +23,5 @@ async function startServer() {
         process.exit(1);
     }
 }
-
+app.use(errorHandler);
 startServer();
