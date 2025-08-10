@@ -2,6 +2,12 @@ import { Request, Response } from "express";
 import prisma from "../prisma";
 import { AuthRequest } from "../middlewares/auth.middleware";
 import { Rating, Store } from "../generated/prisma";
+import {
+    createStoreSchema,
+    getStoreByIdSchema,
+    getStoreRatingsForOwnerSchema,
+    listStoresQuerySchema
+} from "../validations/store.schema";
 
 type RatingWithUser = Rating & {
     user: {
@@ -12,6 +18,11 @@ type RatingWithUser = Rating & {
 };
 
 export const listStores = async (req: Request, res: Response) => {
+    const queryResult = listStoresQuerySchema.safeParse(req.query);
+    if (!queryResult.success) {
+        return res.status(400).json({ errors: queryResult.error.issues });
+    }
+
     try {
         const { q, sortBy = "name", order = "asc" } = req.query as any;
 
@@ -53,6 +64,14 @@ export const listStores = async (req: Request, res: Response) => {
 };
 
 export const createStore = async (req: Request, res: Response) => {
+    const result = createStoreSchema.safeParse(req.body);
+
+    if (!result.success) {
+        return res.status(400).json({
+            message: "Validation error",
+            errors: result.error.issues,
+        });
+    }
     try {
         const { name, email, address, ownerId } = req.body;
         if (!name) return res.status(400).json({ message: "name required" });
@@ -65,6 +84,13 @@ export const createStore = async (req: Request, res: Response) => {
 };
 
 export const getStoreById = async (req: Request, res: Response) => {
+    const paramCheck = getStoreByIdSchema.safeParse(req.params);
+    if (!paramCheck.success) {
+        return res.status(400).json({
+            message: "Validation error",
+            errors: paramCheck.error.issues
+        });
+    }
     try {
         const id = Number(req.params.id);
         const store = await prisma.store.findUnique({
@@ -94,6 +120,13 @@ export const getStoreById = async (req: Request, res: Response) => {
 };
 
 export const getStoreRatingsForOwner = async (req: AuthRequest, res: Response) => {
+    const paramCheck = getStoreRatingsForOwnerSchema.safeParse(req.params);
+    if (!paramCheck.success) {
+        return res.status(400).json({
+            message: "Validation error",
+            errors: paramCheck.error.issues });
+    }
+
     try {
         const storeId = Number(req.params.id);
         const store = await prisma.store.findUnique({
